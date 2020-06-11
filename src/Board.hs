@@ -10,15 +10,18 @@ data State = Mine | Neighbour Int deriving (Eq, Show)
 
 type Board = Array (Char, Int) (State, Status)
 
-validate :: Board -> Bool
-validate = undefined
+startGame :: Int -> Board
+startGame x
+  | x == 1 = genBoard `i` 9 5
+  | x == 2 = genBoard `p` 16 20
+  | x == 3 = genBoard `z` 16 99
 
 genMines :: Char -> Int -> Int -> IO [(Char, Int)]
 genMines ch i n = do
   gen <- getStdGen
-  let chars = randomRs ('a', ch) (gen)
+  let chars = randomRs ('a', ch) gen
   gen' <- newStdGen
-  let nums = randomRs (1, i) (gen')
+  let nums = randomRs (1, i) gen
   return (take n (zip chars nums))
 
 genBoard :: Char -> Int -> Int -> IO Board
