@@ -66,6 +66,8 @@ executable minesweeper
     , base >=4.13 && < 4.14
     , random
     , array
+    , ansi-terminal
+    , rainbow
 
   -- Directories containing source files.
   -- hs-source-dirs:
