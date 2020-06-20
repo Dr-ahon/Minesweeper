@@ -68,6 +68,8 @@ executable minesweeper
     , array
     , ansi-terminal
     , rainbow
+    , time
+    , text
 
   -- Directories containing source files.
   -- hs-source-dirs:

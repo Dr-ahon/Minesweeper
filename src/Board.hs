@@ -7,9 +7,11 @@ import Data.Array
 import Data.Char
 import Data.Function ((&))
 import Data.List
+import Data.Time.Clock
 import Rainbow
 import System.Console.ANSI
 import System.Random
+import Text.Read
 
 data Status = Covered | Discovered | Flagged deriving (Eq, Show)
 
@@ -24,9 +26,9 @@ type Board = Array (Char, Int) (State, Status)
 gameLoop :: IO ()
 gameLoop = do
   clearScreen
-  putChunkLn $ "Welcome to minesweeper! Please choose difficulty:\n 1  9x9 - 10 mines\n 2  16x16 - 40 mines\n 3  26x16 - 99 mines" & fore blue
-  variant <- getLine
-  board <- startGame variant
+  x <- getCurrentTime
+  putChunkLn $ "Welcome to minesweeper! Please choose difficulty:\n 1  9x9 - 10 mines\n 2  16x16 - 40 mines\n 3  26x16 - 99 mines\n 4  custom" & fore blue
+  board <- startGame
   clearScreen
   putStrLn (showCoveredTable board)
   gameRes <- sessionLoop board
@@ -35,7 +37,17 @@ gameLoop = do
       putStrLn "YOU WON"
     else do
       putStrLn "YOU LOST"
+  y <- getCurrentTime
+  let
+  putStrLn (printTime x y)
   newGameQuestion
+
+printTime :: UTCTime -> UTCTime -> String
+printTime x y = "your gametime: " ++ mins ++ " min " ++ secs ++ " sec"
+  where
+    mins = show $ allSecs `div` 60
+    secs = show $ allSecs `mod` 60
+    allSecs = floor (diffUTCTime y x)
 
 newGameQuestion :: IO ()
 newGameQuestion = do
@@ -46,14 +58,31 @@ newGameQuestion = do
     "n" -> do
       clearScreen
       return ()
-    _ -> putStrLn "Invalid input. "
+    _ -> do
+      putStrLn "Invalid input. "
+      newGameQuestion
 
-startGame :: String -> IO Board
-startGame x
-  | x == "1" = genBoard 'i' 9 10
-  | x == "2" = genBoard 'p' 16 40
-  | x == "3" = genBoard 'z' 16 99
-  | x == "4" = genBoard 'd' 4 4
+startGame :: IO Board
+startGame = do
+  x <- getLine
+  case x of
+    "1" -> genBoard 'i' 9 10
+    "2" -> genBoard 'p' 16 40
+    "3" -> genBoard 'z' 16 99
+    "4" -> customBoard
+    _ -> do
+      putStrLn "invalid input"
+      startGame
+
+customBoard :: IO Board
+customBoard = do
+  putStrLn "please enter horisontal length"
+  x <- getLine
+  putStrLn "please enter the last letter"
+  y <- getLine
+  putStrLn "please enter number of mines"
+  mines <- getLine
+  genBoard (head y) (read x :: Int) (read mines :: Int)
 
 genBoard :: Char -> Int -> Int -> IO Board
 genBoard ch x n = do
@@ -80,9 +109,7 @@ sessionLoop :: Board -> IO Result
 sessionLoop board
   | didWeWin board = return Win
   | otherwise = do
-    putStrLn "Choose a tile to discover (f.e. 'a 1')"
-    tile <- getLine
-    let inputAction = inputDirector board tile
+    inputAction <- tileAsker board
     when (fst inputAction == Invalid) $ putStrLn "Input is invalid, try again"
     clearScreen
     if fst (board ! snd inputAction) == Mine && fst inputAction == Detonate
@@ -93,6 +120,17 @@ sessionLoop board
         let newBoard = mkNewBoard board inputAction
         putStrLn (showCoveredTable newBoard)
         sessionLoop newBoard
+
+tileAsker :: Board -> IO (Action, (Char, Int))
+tileAsker board = do
+  putStrLn "Choose a tile to discover (f.e. 'a1')"
+  tile <- getLine
+  let (action, index) = inputDirector board tile
+  if (action == Invalid)
+    then do
+      putStrLn "Invalid input"
+      tileAsker board
+    else return (action, index)
 
 uncoverAllMines :: Board -> Board
 uncoverAllMines b = b // minesUncovered
@@ -156,7 +194,7 @@ addAxis n b = ("  " ++ ints) : zippedBoard
 coverDecider :: (State, Status) -> String
 coverDecider (Neighbor 0, Discovered) = "·"
 coverDecider (_, Flagged) = "F"
-coverDecider (_, Covered) = "-"
+coverDecider (_, Covered) = "□"
 coverDecider (x, Discovered) = unpack x
 
 translate :: IO Board -> IO ()
@@ -165,16 +203,21 @@ translate b = b >>= putStrLn . showTable
 inputDirector :: Board -> String -> (Action, (Char, Int))
 inputDirector b s =
   case (words s) of
-    [x, y] ->
-      let ind = getCoords x y
-       in (if isInBoard ind then Detonate else Invalid, ind)
-    [ac, x, y] ->
-      let ind = getCoords x y
+    [x] ->
+      if length x < 2
+        then (Invalid, ('a', 1))
+        else (if isInBoard ind then Detonate else Invalid, ind)
+      where
+        ind = getCoords (head y) (tail y)
+        y = trim x
+        trim = dropWhileEnd isSpace . dropWhile isSpace
+    [ac, x] ->
+      let ind = getCoords (head x) (tail x)
        in (if isInBoard ind then flagger b ind else Invalid, ind)
     _ -> (Invalid, ('a', 1))
   where
-    getCoords :: String -> String -> (Char, Int)
-    getCoords x y = (head x, read y)
+    getCoords :: Char -> String -> (Char, Int)
+    getCoords x y = (x, read y)
     isInBoard index = index `elem` indices b
     flagger :: Board -> (Char, Int) -> Action
     flagger b ind =
