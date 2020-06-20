@@ -7,6 +7,7 @@ import Data.Array
 import Data.Char
 import Data.Function ((&))
 import Data.List
+import Data.Maybe
 import Data.Time.Clock
 import Rainbow
 import System.Console.ANSI
@@ -76,13 +77,39 @@ startGame = do
 
 customBoard :: IO Board
 customBoard = do
-  putStrLn "please enter horisontal length"
+  putStrLn "Please enter width"
   x <- getLine
-  putStrLn "please enter the last letter"
-  y <- getLine
-  putStrLn "please enter number of mines"
-  mines <- getLine
-  genBoard (head y) (read x :: Int) (read mines :: Int)
+  let maybX = readMaybe x :: Maybe Int
+  if isNothing maybX
+    then do
+      putStrLn "Invalid input"
+      clearScreen
+      customBoard
+    else do
+      putStrLn "Please enter length (0-26)"
+      y <- getLine
+      let maybY = readMaybe y :: Maybe Int
+      if isNothing maybY || (read y :: Int) > 26
+        then do
+          clearScreen
+          putStrLn "Invalid input"
+          customBoard
+        else do
+          putStrLn "Please enter number of mines"
+          mines <- getLine
+          let maybMines = readMaybe mines :: Maybe Int
+          if isNothing maybMines
+            then do
+              clearScreen
+              putStrLn "Invalid input"
+              customBoard
+            else
+              if (read mines :: Int) > ((read x :: Int) * (read y :: Int))
+                then do
+                  clearScreen
+                  putStrLn "Too much mines"
+                  customBoard
+                else genBoard (head y) (read x :: Int) (read mines :: Int)
 
 genBoard :: Char -> Int -> Int -> IO Board
 genBoard ch x n = do
