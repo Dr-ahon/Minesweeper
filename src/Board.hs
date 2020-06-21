@@ -52,7 +52,7 @@ printTime x y = "your gametime: " ++ mins ++ " min " ++ secs ++ " sec"
 
 newGameQuestion :: IO ()
 newGameQuestion = do
-  putStrLn "Do you want to play again? (y/n)"
+  putStrLn "Do you want to play again?: (y/n)"
   answer <- getLine
   case answer of
     "y" -> gameLoop
@@ -60,7 +60,7 @@ newGameQuestion = do
       clearScreen
       return ()
     _ -> do
-      putStrLn "Invalid input. "
+      putStrLn "Input is invalid, try again:"
       newGameQuestion
 
 startGame :: IO Board
@@ -72,36 +72,36 @@ startGame = do
     "3" -> genBoard 'z' 16 99
     "4" -> customBoard
     _ -> do
-      putStrLn "invalid input"
+      putStrLn "Input is invalid, try again:"
       startGame
 
 customBoard :: IO Board
 customBoard = do
-  putStrLn "Please enter width"
+  putStrLn "Please enter width:"
   x <- getLine
   let maybX = readMaybe x :: Maybe Int
   if isNothing maybX
     then do
-      putStrLn "Invalid input"
+      putStrLn "Input is invalid, try again:"
       clearScreen
       customBoard
     else do
-      putStrLn "Please enter length (0-26)"
+      putStrLn "Please enter length (0-26):"
       y <- getLine
       let maybY = readMaybe y :: Maybe Int
       if isNothing maybY || (read y :: Int) > 26
         then do
           clearScreen
-          putStrLn "Invalid input"
+          putStrLn "Input is invalid, try again:"
           customBoard
         else do
-          putStrLn "Please enter number of mines"
+          putStrLn "Please enter number of mines:"
           mines <- getLine
           let maybMines = readMaybe mines :: Maybe Int
           if isNothing maybMines
             then do
               clearScreen
-              putStrLn "Invalid input"
+              putStrLn "Input is invalid, try again:"
               customBoard
             else
               if (read mines :: Int) > ((read x :: Int) * (read y :: Int))
@@ -109,7 +109,7 @@ customBoard = do
                   clearScreen
                   putStrLn "Too much mines"
                   customBoard
-                else genBoard (head y) (read x :: Int) (read mines :: Int)
+                else genBoard (chr (ord 'a' + read y :: Int)) (read x :: Int) (read mines :: Int)
 
 genBoard :: Char -> Int -> Int -> IO Board
 genBoard ch x n = do
@@ -137,7 +137,7 @@ sessionLoop board
   | didWeWin board = return Win
   | otherwise = do
     inputAction <- tileAsker board
-    when (fst inputAction == Invalid) $ putStrLn "Input is invalid, try again"
+    when (fst inputAction == Invalid) $ putStrLn "Input is invalid, try again:"
     clearScreen
     if fst (board ! snd inputAction) == Mine && fst inputAction == Detonate
       then do
@@ -150,12 +150,12 @@ sessionLoop board
 
 tileAsker :: Board -> IO (Action, (Char, Int))
 tileAsker board = do
-  putStrLn "Choose a tile to discover (f.e. 'a1')"
+  putStrLn "Choose a tile to discover: (f.e. 'a1')"
   tile <- getLine
   let (action, index) = inputDirector board tile
   if (action == Invalid)
     then do
-      putStrLn "Invalid input"
+      putStrLn "Input is invalid, try again:"
       tileAsker board
     else return (action, index)
 
@@ -231,10 +231,11 @@ inputDirector :: Board -> String -> (Action, (Char, Int))
 inputDirector b s =
   case (words s) of
     [x] ->
-      if length x < 2
+      if length x < 2 || not (isAlpha char)
         then (Invalid, ('a', 1))
         else (if isInBoard ind then Detonate else Invalid, ind)
       where
+        char = head y
         ind = getCoords (head y) (tail y)
         y = trim x
         trim = dropWhileEnd isSpace . dropWhile isSpace
